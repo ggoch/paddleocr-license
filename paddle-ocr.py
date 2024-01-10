@@ -48,47 +48,39 @@ def text_paddleocr(img):
 
 model = YOLO("models/first-train/weights/best.pt")  # load a custom model
 
-path = "datas/valid/images"
-plt.figure(figsize=(10, 10))
-
-# cap = cv2.VideoCapture("datas/videos/Barataria Morvant Exit.mp4")
-cap = cv2.VideoCapture("datas/videos/Vehicle style and Plate recolonization for moving cars.mp4")
-
-# Store the track history
-track_history = defaultdict(lambda: [])
+cap = cv2.VideoCapture("datas/videos/Barataria Morvant Exit.mp4")
+# cap = cv2.VideoCapture("datas/videos/Vehicle style and Plate recolonization for moving cars.mp4")
 
 statrTime = time.time()
 frame_count = 0
+skipFrameCount = 1
 
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
 
-    # # 處理每一幀（以下代碼與處理單張圖片相同）
-    img = frame[:, :, ::-1].copy()  # 轉換顏色空間
-    # results = model.predict(img, save=False)
-    results = model.track(img, conf=0.3, iou=0.5,persist=True)
-    boxes = results[0].boxes.xyxy
+    boxes = []
 
-    # boxes = results[0].boxes.xywh.cpu()
-    # track_ids = []
+    annotated_frame = frame[:, :, ::-1].copy()
 
-    # if results[0].boxes.id is not None:
-    #     track_ids = results[0].boxes.id.int().cpu().tolist()
+    if frame_count % skipFrameCount == 0:
+        # # 處理每一幀（以下代碼與處理單張圖片相同）
+        img = frame[:, :, ::-1].copy()  # 轉換顏色空間
+        # results = model.predict(img, save=False)
+        results = model.track(img, conf=0.3, iou=0.5,persist=True)
+        boxes = results[0].boxes.xyxy
 
-    # Visualize the results on the frame
-    annotated_frame = results[0].plot()
+        annotated_frame = results[0].plot()
 
-    for box in boxes:
-        x1, y1, x2, y2 = map(int, box[:4])
-        # img = cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        gray_img = annotated_frame[y1:y2, x1:x2].copy()
-        tmp = cv2.cvtColor(gray_img, cv2.COLOR_BGR2GRAY)
-        texts = text_paddleocr(tmp)
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box[:4])
+            gray_img = annotated_frame[y1:y2, x1:x2].copy()
+            tmp = cv2.cvtColor(gray_img, cv2.COLOR_BGR2GRAY)
+            texts = text_paddleocr(tmp)
 
-        for i, txt in enumerate(texts):
-            annotated_frame = text(annotated_frame, txt, (x1, y1 - 20 - i * 20), (255, 0, 0), 30)
+            for i, txt in enumerate(texts):
+                annotated_frame = text(annotated_frame, txt, (x1, y1 - 20 - i * 20), (255, 0, 0), 30)
     
     frame_count += 1
 
