@@ -2,3 +2,4 @@ cuda/
 datas/videos/
 models/
 models.zip
+__pycache__/
