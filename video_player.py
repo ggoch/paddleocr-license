@@ -31,7 +31,8 @@ class VideoPlayer:
             annotated_frame = show_fn.get_fps(annotated_frame, self.startTime, self.frameCount,color=(0, 0, 255))
 
             # 繪製進度條
-            annotated_frame = self.draw_progress_bar(annotated_frame)
+            if self.show_progress_bar:
+                annotated_frame = self.draw_progress_bar(annotated_frame)
 
             # # 顯示結果
             cv2.imshow('YOLO', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
@@ -51,13 +52,23 @@ class VideoPlayer:
 
             # 如果我们处于暂停状态并且没有按键操作，就在这里等待
             while self.paused:
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("k"):  # 再次按 'k' 继续播放
-                    self.paused = False
-                    break
-                elif key == ord("q"):  # 退出
-                    break
-                time.sleep(0.1)  # 减少循环速度，以防止高CPU占用
+                while True:
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("k"):  # 再次按 'k' 继续播放
+                        self.paused = False
+                        break
+                    elif key == ord("q"):  # 退出
+                        return
+                    elif key == ord("j") and self.frameCount > 1:  # 倒退一帧
+                        self.rewind()
+                        self.update_frame(callback)
+                    elif key == ord("l"):  # 前进一帧
+                        self.fast_forward()
+                        self.update_frame(callback)
+                    elif key == ord("h"):  # 切换进度条的显示
+                        self.show_progress_bar = not self.show_progress_bar
+                        # self.update_frame(callback)
+                    time.sleep(0.1)
 
             if self.paused:  # 如果退出暂停循环是因为按了退出键，那么也应该退出外层循环
                 break
@@ -77,6 +88,17 @@ class VideoPlayer:
                 return self.last_results[0].plot()
             else:
                 return frame[:, :, ::-1].copy()
+            
+    def update_frame(self, callback):
+        # 讀取並顯示當前幀
+        ret, frame = self.cap.read()
+        if ret:
+            annotated_frame = frame.copy()
+            annotated_frame = self.process_frame(frame, callback)
+            annotated_frame = show_fn.get_fps(annotated_frame, self.startTime, self.frameCount,color=(0, 0, 255))
+            if self.show_progress_bar:
+                annotated_frame = self.draw_progress_bar(annotated_frame)
+            cv2.imshow('YOLO', cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR))
             
     def pause(self):
         # 暂停视频的逻辑
@@ -101,7 +123,7 @@ class VideoPlayer:
 
             # 创建一个透明图层来绘制进度条
             overlay = frame.copy()
-            overlay_height = 20  # 进度条的高度
+            overlay_height = 50  # 进度条的高度
             cv2.rectangle(overlay, (0, frame.shape[0] - overlay_height), (progress, frame.shape[0]), (255, 255, 0), -1)  # 绿色进度条
 
             # 将透明图层叠加到原始帧上
